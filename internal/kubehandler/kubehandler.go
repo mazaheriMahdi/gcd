@@ -29,19 +29,26 @@ type KubeHandler struct {
 }
 
 // NewKubeHandler creates a new KubeHandler instance.
-// It initializes connections to the Kubernetes cluster using either kubeconfigPath
-// (if provided) or in-cluster configuration.
-func NewKubeHandler(kubeconfigPath string) (*KubeHandler, error) {
+// It initializes connections to the Kubernetes cluster.
+// Priority:
+// 1. kubeconfigContent (if provided)
+// 2. kubeconfigPath (if provided)
+// 3. In-cluster configuration
+func NewKubeHandler(kubeconfigPath string, kubeconfigContent []byte) (*KubeHandler, error) {
 	var config *rest.Config
 	var err error
 
-	if kubeconfigPath != "" {
+	if len(kubeconfigContent) > 0 {
+		log.Println("Using kubeconfig from provided content")
+		config, err = clientcmd.RESTConfigFromKubeConfig(kubeconfigContent)
+	} else if kubeconfigPath != "" {
 		log.Printf("Using kubeconfig from path: %s\n", kubeconfigPath)
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	} else {
 		log.Println("Using in-cluster Kubernetes config")
 		config, err = rest.InClusterConfig()
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Kubernetes config: %w", err)
 	}
